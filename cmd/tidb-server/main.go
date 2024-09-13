@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -261,6 +262,33 @@ func initFlagSet() *flag.FlagSet {
 }
 
 func main() {
+	fCpu, err := os.OpenFile("cpu.prof", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer fCpu.Close()
+
+	fMem, err := os.OpenFile("mem.prof", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer fMem.Close()
+
+	err = pprof.StartCPUProfile(fCpu)
+	if err != nil {
+		panic(err)
+	}
+	defer pprof.StopCPUProfile()
+
+	main2()
+	
+	err = pprof.WriteHeapProfile(fMem)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func main2() {
 	fset := initFlagSet()
 	if args := fset.Args(); len(args) != 0 {
 		if args[0] == "collect-log" && len(args) > 1 {
